@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<title>SPNEGO Proxy</title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<style>
+	body {
+    	font-family: monospace;
+		color: #ccc;
+		background: #000;
+	}
+	#response,
+	#refreshRate {
+		background: #222;
+		border: 1px solid #135784;
+		padding: 10px;
+		border-radius: 3px;
+	}
+	</style>
+</head>
+<body>
+
+<h1>Stresstest</h1>
+<pre id="refreshRate"></pre>
+<pre id="response"></pre>
+
+<script>
+(function () {
+	var output = document.getElementById('response');
+	var refreshRateOutoput = document.getElementById('refreshRate');
+	var refreshRate = 1000;
+	
+	function delay (func, ms) {
+		setTimeout(func, ms);
+	}
+
+	function render (code, res) {
+		output.innerHTML = code + ' ' + res.trim(); // JSON.parse(res, null, '\t');
+	}
+
+	function update (callback) {
+		var xhr = new XMLHttpRequest();
+
+		xhr.onreadystatechange = function () {
+			if (xhr.readyState == XMLHttpRequest.DONE) {
+				if (!xhr.status) {
+					refreshRate = 2000;
+				} else {
+					render(xhr.status, xhr.responseText);
+					refreshRate = xhr.getResponseHeader('X-Refresh-Rate') || 2000;
+				}
+
+				refreshRateOutoput.innerHTML = 'current refresh rate: ' + refreshRate + 'ms';
+
+				callback();
+			}
+		};
+
+		xhr.open('GET', '/auth', true);
+		xhr.send();
+	}
+
+	var lastUpdate = 0;
+	window.addEventListener('message', function () {
+		var now = (new Date()).getTime();
+
+		if (now - lastUpdate >= refreshRate) {
+			lastUpdate = now
+			update(function () {
+				window.postMessage('update', window.location.origin);
+			});
+		} else {
+			window.postMessage('update', window.location.origin);
+		}
+
+	}, false);
+
+	window.postMessage('update', window.location.origin);
+}());
+
+</script>
+
+</body>
+</html>
